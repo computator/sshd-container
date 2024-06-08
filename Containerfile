@@ -1,4 +1,4 @@
-FROM alpine
+FROM docker.io/library/alpine
 
 LABEL org.opencontainers.image.source=https://github.com/computator/sshd-container
 
