@@ -34,6 +34,7 @@ fi
 
 if [ -z "${SSH_PASS_AUTH:-}" ]; then
 	# disable password auth
+	sed -i '/^AuthenticationMethods/ d' /etc/ssh/sshd_config
 	echo "AuthenticationMethods publickey" >> /etc/ssh/sshd_config
 else
 	# set password
