@@ -6,10 +6,12 @@ RUN apk add --no-cache openssh tini
 RUN set -eux; \
 	adduser -D ssh; \
 	passwd -u ssh; \
+	sed -i '/^AuthorizedKeysFile/ d' /etc/ssh/sshd_config; \
 	echo "AllowUsers ssh" >> /etc/ssh/sshd_config; \
+	echo "AuthorizedKeysFile /etc/ssh/authorized_keys .ssh/authorized_keys" >> /etc/ssh/sshd_config; \
 	echo "Logged in to sshd container shell. Use a SFTP client to access content remotely" > /etc/motd
 COPY entrypoint.sh /
 
 WORKDIR /srv
-CMD ["/entrypoint.sh"]
+ENTRYPOINT ["/entrypoint.sh"]
 EXPOSE 22
