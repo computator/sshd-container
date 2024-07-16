@@ -36,6 +36,7 @@ jobs:
           echo
           echo "Image Status:"
           podman image list
+          echo "IMPORTED_CONTAINERS=$(podman image list -q --sort id | xargs)" >> "$GITHUB_ENV"
 
       - name: Check for newer ssh version in apk
         # skip step if no cache was restored
@@ -67,10 +68,15 @@ jobs:
           echo "Existing Images:"
           podman image list
           echo
-          echo "Saving Images:"
           rm -f "${IMGCACHE_PATH:?}"
+          if [ "$(podman image list -q --sort id | xargs)" = "$IMPORTED_CONTAINERS" ]; then
+            echo 'Images unchanged, skipping export!'
+            echo 'export-skipped=true' >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "Saving Images:"
           {
-            # build cache (dangling or intermediate images that have labeled root ancestors)
+            # build cache: dangling or intermediate images with root ancestors that are still labeled (I.E. not untagged/replaced)
             for img in $(podman image list -q --filter dangling=true) $(podman image list -q --filter intermediate=true); do
               root=$( i="$img" t="$i"; while [ -n "$i" ]; do t="$i" i="$(podman image inspect -f '{{ .Parent }}' "$i")"; done; echo "$t"; )
               [ "$(podman image inspect -f '{{ len .RepoTags }}' "$root")" -gt 0 ] && echo "$img"
@@ -83,7 +89,7 @@ jobs:
             || echo "::error::Failure while exporting images to cache"
 
       - uses: actions/cache/save@v4
-        if: steps.export-cache.outcome == 'success' && !endsWith(steps.restore-cache.outputs.cache-matched-key, hashFiles(env.IMGCACHE_PATH))
+        if: steps.export-cache.outcome == 'success' && !steps.export-cache.outputs.export-skipped && !endsWith(steps.restore-cache.outputs.cache-matched-key, hashFiles(env.IMGCACHE_PATH))
         with:
           key: image-cache-${{ hashFiles(env.IMGCACHE_PATH) }}
           path: ${{ env.IMGCACHE_PATH }}
