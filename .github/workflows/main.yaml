@@ -25,9 +25,10 @@ jobs:
 
       - name: Set podman imagestore path
         run: |
+          ls -la $HOME/.config/containers/storage.conf || true
           podman info
           mkdir -p $HOME/.config/containers
-          cat /usr/share/containers/storage.conf - > $HOME/.config/containers/storage.conf <<-"EOF"
+          cat /etc/containers/storage.conf - > $HOME/.config/containers/storage.conf <<-"EOF"
             [storage]
             imagestore = "${{ format('{0}/{1}', runner.temp, env.IMGCACHE_DIR) }}"
           EOF
