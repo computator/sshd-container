@@ -23,24 +23,14 @@ jobs:
           restore-keys: image-cache-
           path: ${{ format('{0}/{1}', runner.temp, env.IMGCACHE_DIR) }}
 
-      - name: Set podman imagestore path
-        run: |
-          mkdir -p $HOME/.config/containers
-          cat > $HOME/.config/containers/storage.conf <<-"EOF"
-            [storage]
-            driver = "overlay"
-            imagestore = "${{ format('{0}/{1}', runner.temp, env.IMGCACHE_DIR) }}"
-          EOF
-          podman system reset -f
-
       - name: Check for newer ssh version in apk
         # skip step if no cache was restored
         if: steps.restore-cache.outputs.cache-matched-key != ''
         continue-on-error: true
         run: |
-          [ -n "$(podman run --pull never --rm -i ${{ env.IMAGE }} sh -c 'apk -q update && apk -q list -u openssh-server')" ] || exit 0
-          podman image rm ${{ env.IMAGE }}
-          podman image prune -f
+          [ -n "$(podman --imagestore "${{ format('{0}/{1}', runner.temp, env.IMGCACHE_DIR) }}" run --pull never --rm -i ${{ env.IMAGE }} sh -c 'apk -q update && apk -q list -u openssh-server')" ] || exit 0
+          podman --imagestore "${{ format('{0}/{1}', runner.temp, env.IMGCACHE_DIR) }}" image rm ${{ env.IMAGE }}
+          podman --imagestore "${{ format('{0}/{1}', runner.temp, env.IMGCACHE_DIR) }}" image prune -f
 
       - env:
           USERNAME: ${{ github.actor }}
@@ -50,9 +40,9 @@ jobs:
       - uses: actions/checkout@v4
 
       # TODO: switch to --pull=newer once supported https://github.com/containers/podman/issues/22845
-      - run: podman build --pull=always -t ${{ env.IMAGE }} .
+      - run: podman --imagestore "${{ format('{0}/{1}', runner.temp, env.IMGCACHE_DIR) }}" build --pull=always -t ${{ env.IMAGE }} .
 
-      - run: podman push ${{ env.IMAGE }}
+      - run: podman --imagestore "${{ format('{0}/{1}', runner.temp, env.IMGCACHE_DIR) }}" push ${{ env.IMAGE }}
 
       - if: ${{ !cancelled() }} # runs even if previous steps failed
         run: podman logout ${{ env.REGISTRY }}
