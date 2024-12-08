@@ -25,14 +25,13 @@ jobs:
 
       - name: Set podman imagestore path
         run: |
-          podman info
           mkdir -p $HOME/.config/containers
           cat > $HOME/.config/containers/storage.conf <<-"EOF"
             [storage]
             driver = "overlay"
             imagestore = "${{ format('{0}/{1}', runner.temp, env.IMGCACHE_DIR) }}"
           EOF
-          podman info
+          podman system reset -f
 
       - name: Check for newer ssh version in apk
         # skip step if no cache was restored
